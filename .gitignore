@@ -1,0 +1,19 @@
+# Secrets
+*.env
+*.key
+*.pem
+secrets/
+.credentials
+*_token*
+*_password*
+
+# OS / editor noise
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Logs and backups
+*.log
+*.bak
+*.tar.gz
