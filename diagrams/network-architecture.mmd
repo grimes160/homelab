@@ -1,0 +1,61 @@
+graph TD
+    subgraph WAN["Internet / WAN"]
+        ISP["Spectrum ISP"]
+    end
+
+    subgraph EDGE["Edge / Gateway Layer"]
+        Modem["Hitron ET2251<br/>Cable Modem"]
+        Router["ASUS ZenWiFi XT9<br/>Router + Mesh AP<br/>192.168.50.1 / DHCP / Gateway"]
+    end
+
+    subgraph L2["Layer 2 - Distribution / Switching"]
+        Patch["Patch Panel<br/>structured cabling"]
+        SW1["TP-Link SG108<br/>8-port unmanaged"]
+        SW2["TP-Link SG108PE<br/>8-port PoE"]
+    end
+
+    subgraph WIFI["Wireless Clients"]
+        Wifi["Laptops / phones / tablets"]
+    end
+
+    subgraph COMPUTE["Compute / Hypervisor"]
+        Host["HP EliteDesk G6 Mini<br/>Proxmox VE 8<br/>192.168.50.10<br/>i5 10th gen / 16GB RAM<br/>256GB SSD + 10TB HDD"]
+    end
+
+    subgraph SERVICES["LXC Containers on vmbr0"]
+        CT100["CT100 - Pi-hole<br/>192.168.50.20<br/>network DNS + ad-block"]
+        CT101["CT101 - Unbound<br/>192.168.50.21:5335<br/>recursive DNS resolver"]
+        CT102["CT102 - Tailscale<br/>192.168.50.22<br/>subnet router / VPN gateway"]
+        CT103["CT103 - Grafana + Prometheus<br/>192.168.50.23:3000<br/>observability stack"]
+    end
+
+    subgraph IOT["IoT / Smart Home"]
+        Hue["Philips Hue Bridge V1<br/>Zigbee coordinator"]
+    end
+
+    subgraph OVERLAY["Tailscale Tailnet - Encrypted Overlay"]
+        Remote["Remote devices<br/>laptop / phone off-LAN"]
+    end
+
+    ISP -->|"coax WAN"| Modem
+    Modem -->|"1 GbE"| Router
+    Router -->|"1 GbE uplink"| Patch
+    Router -.->|"Wi-Fi 6 mesh"| Wifi
+    Patch -->|"keystone run"| SW1
+    Patch -->|"keystone run"| SW2
+    SW1 -->|"1 GbE"| Host
+    SW2 -->|"PoE / Ethernet"| Hue
+
+    Host --> CT100
+    Host --> CT101
+    Host --> CT102
+    Host --> CT103
+
+    CT100 -.->|"forwards to :5335"| CT101
+    Remote ==>|"WireGuard overlay"| CT102
+    CT102 -.->|"advertises 192.168.50.0/24"| Router
+
+    CT103 -.->|"scrape :9100"| Host
+    CT103 -.->|"scrape :9100 + :9617"| CT100
+    CT103 -.->|"scrape :9100"| CT101
+    CT103 -.->|"scrape :9100"| CT102
